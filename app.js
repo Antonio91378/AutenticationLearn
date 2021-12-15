@@ -34,6 +34,7 @@ const userSchema = new mongoose.Schema({
   email: String,
   password: String,
   googleId: String,
+  secret: String,
 })
 
 userSchema.plugin(passportLocalMongoose)
@@ -60,7 +61,6 @@ passport.use(
       callbackURL: 'http://localhost:3000/auth/google/secrets',
     },
     function (accessToken, refreshToken, profile, cb) {
-      console.log(profile)
       User.findOrCreate({ googleId: profile.id }, function (err, user) {
         return cb(err, user)
       })
@@ -73,6 +73,7 @@ passport.use(
 app.get('/', (req, res) => {
   res.render('home')
 })
+// =====================================
 app.get('/logout', (req, res) => {
   res.render('home')
 })
@@ -110,13 +111,6 @@ app.post('/login', (req, res) => {
 app.get('/register', (req, res) => {
   res.render('register')
 })
-app.get('/secrets', (req, res) => {
-  if (req.isAuthenticated()) {
-    res.render('secrets')
-  } else {
-    res.redirect('/login')
-  }
-})
 app.post('/register', (req, res) => {
   User.register(
     { username: req.body.username },
@@ -132,6 +126,42 @@ app.post('/register', (req, res) => {
       }
     },
   )
+})
+// =====================================
+app.get('/secrets', (req, res) => {
+  User.find({ secret: { $ne: null } }, (err, foundUsers) => {
+    if (err) {
+      console.log(err)
+    } else {
+      if (foundUsers) {
+        res.render('secrets', { usersWithSecrets: foundUsers })
+      }
+    }
+  })
+})
+// =====================================
+app.get('/submit', (req, res) => {
+  if (req.isAuthenticated()) {
+    res.render('submit')
+  } else {
+    res.redirect('/login')
+  }
+})
+app.post('/submit', (req, res) => {
+  const submittedSecret = req.body.secret
+  console.log(req.user.id)
+  User.findById(req.user.id, (err, foundUser) => {
+    if (err) {
+      console.log(err)
+    } else {
+      if (foundUser) {
+        foundUser.secret = submittedSecret
+        foundUser.save(() => {
+          res.redirect('/secrets')
+        })
+      }
+    }
+  })
 })
 // =====================================
 //others
